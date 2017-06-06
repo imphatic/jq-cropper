@@ -1,0 +1,67 @@
+.thumbnailPicker
+{
+    top:0;
+    left:0;
+    z-index:9999;
+    position:absolute;
+    border:2px solid rgba(222,60,80,.9);
+    pointer-events:none;
+}
+
+.thumbnailPicker  > .pickerBox
+{
+    width:300px;
+    height:300px;
+}
+
+.cropperCanvas .resize-container {
+    position: relative;
+    display: inline-block;
+    cursor: move;
+    margin: 0 auto;
+}
+
+.cropperCanvas .resize-container img {
+    display: block
+}
+
+.cropperCanvas .resize-container:hover img,
+.cropperCanvas .resize-container:active img {
+    outline: 2px dashed rgba(222,60,80,.9);
+}
+
+.cropperCanvas .resize-handle-ne,
+.cropperCanvas .resize-handle-se,
+.cropperCanvas .resize-handle-nw,
+.cropperCanvas .resize-handle-sw {
+    position: absolute;
+    display: block;
+    width: 10px;
+    height: 10px;
+    background: rgba(222,60,80,.9);
+    z-index: 999;
+}
+
+.cropperCanvas .resize-handle-nw {
+    top: -5px;
+    left: -5px;
+    cursor: nw-resize;
+}
+
+.cropperCanvas .resize-handle-sw {
+    bottom: -5px;
+    left: -5px;
+    cursor: sw-resize;
+}
+
+.cropperCanvas .resize-handle-ne {
+    top: -5px;
+    right: -5px;
+    cursor: ne-resize;
+}
+
+.cropperCanvas .resize-handle-se {
+    bottom: -5px;
+    right: -5px;
+    cursor: se-resize;
+}
