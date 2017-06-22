@@ -14,14 +14,14 @@ var thumbnailPicker =
             debugMode:true,
             debugLevel:0,
             constrain:true,
-            imageMustFillPicker:false,
-            fitImageToPickerOnInit:true,
+            imageMustFillPicker:true,
+            fitImageToPickerOnInit:false,
             height: {
                 min:135,
-                max:400 },
+                max:600 },
             width: {
                 min:135,
-                max:400 }
+                max:600 }
         },
 
         callbacks : {
@@ -50,10 +50,15 @@ var thumbnailPicker =
             this.container.on('mousedown touchstart', '.resize-handle', {method:'resizeStart'}, thumbnailPicker.delegator);
             this.container.on('mousedown touchstart', 'img', {method:'moveStart'}, thumbnailPicker.delegator);
 
-            this.callbackImageReady(function() {
-                if(thumbnailPicker.options.fitImageToPickerOnInit) thumbnailPicker.fitImageToPicker();
-                thumbnailPicker.callBackUserDefined('init');
-            });
+            if(thumbnailPicker.options.fitImageToPickerOnInit)
+            {
+                thumbnailPicker.fitImageToPicker();
+            }
+        },
+
+        fitIamgeToBounds:function()
+        {
+
         },
 
         delegator:function(e)
@@ -133,7 +138,8 @@ var thumbnailPicker =
             left = (!left) ? this.container.offset().left : left;
             top = (!top) ? this.container.offset().top : top;
 
-            var bounds = {
+            var bounds =
+            {
                 height:this.options.height,
                 width:this.options.width,
                 top:this.picker.offset().top,
@@ -142,32 +148,79 @@ var thumbnailPicker =
                 left:this.picker.offset().left
             };
 
-            var container = {
+            var container =
+            {
                 top:top,
                 right:left + this.container.width(),
                 bottom:top + this.container.height(),
                 left:left
             };
 
-            // width min/max
-            if(width < bounds.width.min || width > bounds.width.max){check.result = false; check.reason.push('width')}
+            // width min
+            if(width < bounds.width.min)
+            {
+                check.result = false;
+                check.reason.push('width-min');
+                this.resizeApply(bounds.width.min);
+            }
 
-            // height min/max
-            if(height < bounds.height.min || height > bounds.height.max){check.result = false; check.reason.push('height')}
+            // width max
+            if(width > bounds.width.max)
+            {
+                check.result = false;
+                check.reason.push('width-max');
+                this.resizeApply(bounds.width.max);
+            }
+
+            // height min
+            if(height < bounds.height.min)
+            {
+                check.result = false;
+                check.reason.push('height-min');
+                this.resizeApply(null, bounds.height.min);
+            }
+
+            // height max
+            if(height > bounds.height.max)
+            {
+                check.result = false;
+                check.reason.push('height-max');
+                this.resizeApply(null, bounds.height.max);
+            }
 
             // top bounds
-            if(container.top > bounds.top) { check.result = false; check.reason.push('top')}
+            if(container.top > bounds.top)
+            {
+                check.result = false;
+                check.reason.push('bounds-top');
+                this.moveApply(null, bounds.top);
+            }
 
             // right bounds
-            if(container.right < bounds.right) { check.result = false; check.reason.push('right')}
+            if(container.right < bounds.right)
+            {
+                check.result = false;
+                check.reason.push('bounds-right');
+            }
 
             // bottom bounds
-            if(container.bottom < bounds.bottom) { check.result = false; check.reason.push('bottom')}
+            if(container.bottom < bounds.bottom)
+            {
+                check.result = false;
+                check.reason.push('bounds-bottom');
+            }
 
             // left bounds
-            if(container.left > bounds.left) { check.result = false; check.reason.push('left')}
+            if(container.left > bounds.left)
+            {
+                check.result = false;
+                check.reason.push('bounds-left');
+            }
 
             if(!check.result) this.debug('method: boundaryCheck | fail reasons: ' + check.reason, 1);
+            if(!check.result) console.log(container);
+            if(!check.result) console.log(bounds);
+
             return check.result;
         },
 
@@ -372,18 +425,6 @@ var thumbnailPicker =
             {
                 this.callbacks[callback]();
             }
-        },
-
-        callbackImageReady: function (callback)
-        {
-            if(typeof callback !== 'function') return false;
-
-            //todo: this is not working at all.
-            return;
-            this.image.on('load', function() {
-                callback();
-            });
-
         },
 
         debug: function(msg, level) {
