@@ -14,21 +14,19 @@ var thumbnailPicker =
             debugMode:true,
             debugLevel:0,
             constrain:true,
-            imageMustFillPicker:true,
+            imageMustFillPicker:false,
             fitImageToPickerOnInit:false,
             height: {
-                min:135,
+                min:300,
                 max:600 },
             width: {
-                min:135,
+                min:300,
                 max:600 }
         },
 
-        callbacks : {
-            init:null,
-            moveEnd:null,
-            resizeEnd:null
-        },
+        callbacks : {},
+        callbacksInternal: {},
+
 
         init:function(image, picker)
         {
@@ -50,10 +48,64 @@ var thumbnailPicker =
             this.container.on('mousedown touchstart', '.resize-handle', {method:'resizeStart'}, thumbnailPicker.delegator);
             this.container.on('mousedown touchstart', 'img', {method:'moveStart'}, thumbnailPicker.delegator);
 
-            if(thumbnailPicker.options.fitImageToPickerOnInit)
+            if(this.options.fitImageToPickerOnInit)
             {
-                thumbnailPicker.fitImageToPicker();
+                this.fitImageToPicker();
+            } else {
+                this.initImage();
             }
+
+            this.callBack('init');
+        },
+
+        initImage:function()
+        {
+            //todo: give console warning messages about the bounds and min/max image sizes not matching.
+
+            this.debug('method: initImage | start', 0);
+            var result = this.boundaryCheck();
+
+            if(!result.reason.length) return;
+
+            switch (result.reason[0])
+            {
+                case 'width-min':
+                    this.callbacksInternal.resizeApply = 'initImage';
+                    this.resizeApply(result.bounds.width.min);
+                    break;
+                case 'width-max':
+                    this.callbacksInternal.resizeApply = 'initImage';
+                    this.resizeApply(result.bounds.width.max);
+                    break;
+                case 'height-min':
+                    this.callbacksInternal.resizeApply = 'initImage';
+                    this.resizeApply(null, result.bounds.height.min);
+                    break;
+                case 'height-max':
+                    this.callbacksInternal.resizeApply = 'initImage';
+                    this.resizeApply(null, result.bounds.height.max);
+                    break;
+                case 'bounds-top':
+                    this.callbacksInternal.moveApply = 'initImage';
+                    this.moveApply(null, result.bounds.top);
+                    break;
+                case 'bounds-right':
+                    this.callbacksInternal.moveApply = 'initImage';
+                    var moveRight = (result.bounds.right - result.container.right) + result.container.left;
+                    this.moveApply(moveRight);
+                    break;
+                case 'bounds-bottom':
+                    this.callbacksInternal.moveApply = 'initImage';
+                    var moveBottom = (result.bounds.bottom - result.container.bottom) + result.container.top;
+                    this.moveApply(null, moveBottom);
+                    break;
+                case 'bounds-left':
+                    this.callbacksInternal.moveApply = 'initImage';
+                    this.moveApply(result.bounds.left);
+                    break;
+            }
+
+            this.callBack('initImage');
         },
 
         fitIamgeToBounds:function()
@@ -101,6 +153,8 @@ var thumbnailPicker =
                 thumbnailPicker.debug('method: fitImageToPicker | attempting to apply left: ' + left + ' top: ' + top, 1);
                 thumbnailPicker.moveApply(left, top);
             });
+
+            this.callBack('fitImageToPicker');
         },
 
         saveEventState:function(e)
@@ -129,9 +183,10 @@ var thumbnailPicker =
 
         boundaryCheck:function(width, height, left, top)
         {
-            var check =  {result:true, reason:[]};
+            this.debug('method: boundaryCheck | start', 0);
+            var check =  {result:true, reason:[], bounds:{}, container:{}};
 
-            if(!this.options.imageMustFillPicker) return check.result;
+            if(!this.options.imageMustFillPicker) return check;
 
             width = (!width) ? this.container.width() : width;
             height = (!height) ? this.container.height() : height;
@@ -156,12 +211,14 @@ var thumbnailPicker =
                 left:left
             };
 
+            check.bounds = bounds;
+            check.container = container;
+
             // width min
             if(width < bounds.width.min)
             {
                 check.result = false;
                 check.reason.push('width-min');
-                this.resizeApply(bounds.width.min);
             }
 
             // width max
@@ -169,7 +226,6 @@ var thumbnailPicker =
             {
                 check.result = false;
                 check.reason.push('width-max');
-                this.resizeApply(bounds.width.max);
             }
 
             // height min
@@ -177,7 +233,6 @@ var thumbnailPicker =
             {
                 check.result = false;
                 check.reason.push('height-min');
-                this.resizeApply(null, bounds.height.min);
             }
 
             // height max
@@ -185,7 +240,6 @@ var thumbnailPicker =
             {
                 check.result = false;
                 check.reason.push('height-max');
-                this.resizeApply(null, bounds.height.max);
             }
 
             // top bounds
@@ -193,7 +247,6 @@ var thumbnailPicker =
             {
                 check.result = false;
                 check.reason.push('bounds-top');
-                this.moveApply(null, bounds.top);
             }
 
             // right bounds
@@ -221,7 +274,8 @@ var thumbnailPicker =
             if(!check.result) console.log(container);
             if(!check.result) console.log(bounds);
 
-            return check.result;
+            this.callBack('boundaryCheck');
+            return check;
         },
 
         resizeStart:function(e)
@@ -232,6 +286,8 @@ var thumbnailPicker =
             this.saveEventState(e);
             $(document).on('mousemove touchmove', {method:'resize'},  thumbnailPicker.delegator);
             $(document).on('mouseup touchend', {method:'resizeEnd'},  thumbnailPicker.delegator);
+
+            this.callBack('resizeStart');
         },
 
         resizeEnd:function(e)
@@ -241,7 +297,7 @@ var thumbnailPicker =
             $(document).off('mousemove touchmove', thumbnailPicker.delegator);
             $(document).off('mouseup touchend', thumbnailPicker.delegator);
 
-            this.callBackUserDefined('resizeEnd');
+            this.callBack('resizeEnd');
         },
 
         resize:function(e)
@@ -283,13 +339,18 @@ var thumbnailPicker =
             // Optionally maintain aspect ratio
             height = (this.options.constrain || e.shiftKey) ? null : height;
 
+            var widthHeight = this.getMissingHeightOrWidth(width, height);
+            width = widthHeight.width;
+            height = widthHeight.height;
+
+            if(!this.boundaryCheck(width, height).result) return false;
+
             this.resizeApply(width, height, left, top);
+            this.callBack('resize');
         },
 
-        resizeApply:function(width, height, left, top, callback)
+        getMissingHeightOrWidth:function(width, height)
         {
-            this.debug('method: resizeApply | start', 0);
-
             if(!width)
             {
                 if(this.options.constrain) {
@@ -308,7 +369,19 @@ var thumbnailPicker =
                 }
             }
 
-            if(!this.boundaryCheck(width, height)) return false;
+            return {
+                width:width,
+                height:height
+            };
+        },
+
+        resizeApply:function(width, height, left, top)
+        {
+            this.debug('method: resizeApply | start', 0);
+
+            var widthHeight = this.getMissingHeightOrWidth(width, height);
+            width = widthHeight.width;
+            height = widthHeight.height;
 
             // Without this Firefox will not re-calculate the the image dimensions until drag end
             if(left && top) this.container.offset({'left': left, 'top': top});
@@ -316,9 +389,12 @@ var thumbnailPicker =
             this.resizeCanvas.width = width;
             this.resizeCanvas.height = height;
             this.resizeCanvas.getContext('2d').drawImage(this.originSrc, 0, 0, width, height);
-            this.image.attr('src', this.resizeCanvas.toDataURL("image/png"));
 
-            if(typeof callback === 'function') this.callbackImageReady(callback);
+            this.image.on("load", function() {
+                thumbnailPicker.callBack('resizeApply');
+            }).attr('src', this.resizeCanvas.toDataURL("image/png"));
+
+            return true;
         },
 
         moveStart: function(e)
@@ -330,6 +406,7 @@ var thumbnailPicker =
 
             $(document).on('mousemove touchmove', {method:'move'},  thumbnailPicker.delegator);
             $(document).on('mouseup touchend', {method:'moveEnd'},  thumbnailPicker.delegator);
+            this.callBack('moveStart');
         },
 
         moveEnd: function(e)
@@ -339,7 +416,7 @@ var thumbnailPicker =
             $(document).off('mouseup touchend', thumbnailPicker.delegator);
             $(document).off('mousemove touchmove', thumbnailPicker.delegator);
 
-            this.callBackUserDefined('moveEnd');
+            this.callBack('moveEnd');
         },
 
         move: function(e)
@@ -357,7 +434,7 @@ var thumbnailPicker =
             var left = mouse.x - ( this.eventState.mouse_x - this.eventState.container_left );
             var top = mouse.y - ( this.eventState.mouse_y - this.eventState.container_top );
 
-            if(!this.boundaryCheck(null, null, left, top)) return false;
+            if(!this.boundaryCheck(null, null, left, top).result) return false;
 
             this.moveApply(left, top);
 
@@ -383,16 +460,19 @@ var thumbnailPicker =
                 height = height * ratio;
                 this.resizeApply(width, height);
             }
+
+            this.callBack('move');
         },
 
         moveApply: function(left, top)
         {
-            this.debug('method: moveApply | start', 0);
+            this.debug('method: moveApply | start | left: ' + left + ' | top: ' + top , 0);
 
             this.container.offset({
                 'left': left,
                 'top': top
             });
+            this.callBack('moveApply');
         },
 
         crop: function()
@@ -414,15 +494,29 @@ var thumbnailPicker =
             img.src = this.image.attr('src');
 
             cropCanvas.getContext('2d').drawImage(img, left, top, width, height, 0, 0, width, height);
+
+            this.callBack('crop');
             return cropCanvas.toDataURL("image/png");
         },
 
-        callBackUserDefined: function(callback)
+        callBack: function(callback)
         {
-            this.debug('method: callBackUserDefined | Callback requested: ' + callback, 0);
+            this.debug('method: callBack | start | callback: ' + callback, 0);
+            // Internal Callback
+            if(callback in this.callbacksInternal)
+            {
+                this.debug('method: callBack | Internal callback requested: ' + callback, 0);
+                var callbackFunction = this.callbacksInternal[callback];
 
+                delete this.callbacksInternal[callback];
+
+                this[callbackFunction]();
+            }
+
+            // User Callback
             if(typeof this.callbacks[callback] === 'function')
             {
+                this.debug('method: callBack | User Defined callback requested: ' + callback, 0);
                 this.callbacks[callback]();
             }
         },
